@@ -22,4 +22,15 @@ echo "" | sudo tee -a /etc/ansible/hosts > /dev/null
 echo "[all:vars]" | sudo tee -a /etc/ansible/hosts > /dev/null
 echo "ansible_python_interpreter=/usr/bin/python3" | sudo tee -a /etc/ansible/hosts > /dev/null
 
-echo "Las direcciones IP y los usuarios se han agregado correctamente al archivo /etc/ansible/hosts."
+# Generar claves SSH
+echo "Generando claves SSH..."
+ssh-keygen -t rsa
+
+# Copiar clave SSH a fw y sec
+echo "Copiando clave SSH a fw y sec..."
+ssh-copy-id -i ~/.ssh/id_rsa.pub fw_info
+ssh-copy-id -i ~/.ssh/id_rsa.pub sec_info
+
+echo "Las direcciones IP y los usuarios se han agregado correctamente al archivo /etc/ansible/hosts y la clave SSH se ha copiado a fw y sec."
+
+
