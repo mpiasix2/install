@@ -3,7 +3,7 @@
 # Verificar si Ansible está instalado
 if ! which ansible >/dev/null; then
   echo "Instalando Ansible..."
-  sudo apt update
+  sudo apt update && sudo apt full-upgrade -y && sudo apt autoremove -y && sudo apt autoclean -y
   sudo apt install -y ansible
 fi
 
