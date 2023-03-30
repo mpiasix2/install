@@ -31,7 +31,9 @@ echo "ansible_python_interpreter=/usr/bin/python3" | sudo tee -a /etc/ansible/ho
 
 # Copiar clave SSH a fw y sec
 echo "Copiando clave SSH a fw y sec..."
-sudo ssh-copy-id $(echo $fw_info | grep -o "@.*" | cut -c 2-)
-sudo ssh-copy-id $(echo $sec_info | grep -o "@.*" | cut -c 2-)
+sudo ssh-copy-id $fw_info
+sudo ssh-copy-id $sec_info
 
 echo "Las direcciones IP y los usuarios se han agregado correctamente al archivo /etc/ansible/hosts junto a la clave SSH"
+
+sudo ansible-playbook playbookmpi.yaml -K
