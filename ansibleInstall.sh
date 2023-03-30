@@ -12,6 +12,7 @@ read -p "Introduzca la dirección IP y el usuario de la máquina fw (ejemplo: us
 read -p "Introduzca la dirección IP y el usuario de la máquina sec (ejemplo: usuario@ip): " sec_info
 
 # Agregar las direcciones IP y los usuarios al archivo /etc/ansible/hosts
+sudo rm /etc/ansible/hosts
 echo "" | sudo tee -a /etc/ansible/hosts > /dev/null
 echo "[fw]" | sudo tee -a /etc/ansible/hosts > /dev/null
 echo "fw ansible_host=$fw_info" | sudo tee -a /etc/ansible/hosts > /dev/null
