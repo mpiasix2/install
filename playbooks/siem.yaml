@@ -1,0 +1,183 @@
+---
+- name: Instalar y configurar SIEM
+  hosts: [sec]
+  become: yes
+  tasks:
+
+  - name: Instalando curl...
+    become: true
+    apt:
+      name: curl
+      state: present
+
+  - name: Añadiendo Elastic GPG Key...
+    become: true
+    shell: curl -fsSL https://artifacts.elastic.co/GPG-KEY-elasticsearch | sudo apt-key add -
+
+  - name: Añadiendo repositorio de Elastic Search...
+    become: true
+    lineinfile:
+      path: /etc/apt/sources.list.d/elastic-7.x.list
+      line: 'deb https://artifacts.elastic.co/packages/7.x/apt stable main'
+      create: true
+
+  - name: Actualizando paquetes...
+    become: true
+    apt:
+      update_cache: yes
+
+  - name: Instalando Elasticsearch...
+    become: true
+    apt:
+      name:
+        - elasticsearch
+      state: present
+
+  - name: Instalando Kibana...
+    become: true
+    apt:
+      name:
+        - kibana
+      state: present
+
+  - name: Obteniendo información de la interfaz de red...
+    command: ip -p -j route show default
+    register: route_info
+
+  - name: Obteniendo el nombre de la interfaz de red...
+    set_fact:
+      interface: "{{ route_info.stdout | regex_findall('\"dev\": \"([^\"]+)\"') | first }}"
+
+  - name: Obteneniendo la información de la ip privada...
+    command: hostname -I
+    register: ip_private_info
+
+  - name: Guardando IP privada...
+    set_fact:
+      your_private_ipp: "{{ ip_private_info.stdout_lines[0] }}"
+
+  - name: Quitando el espacio final de la ip privada...
+    set_fact:
+      your_private_ip: "{{ your_private_ipp[0:(your_private_ipp | length - 1)] }}"
+
+  - name: Obteneniendo dirección IP pública...
+    shell: curl ifconfig.me
+    register: ip_public_info
+
+
+  - name: Guardando IP publica...
+    set_fact:
+      your_public_ip: "{{ ip_public_info.stdout_lines[0] }}"
+
+  - name: Configurando Elastic Search con la IP privada...
+    become: yes
+    lineinfile:
+      path: /etc/elasticsearch/elasticsearch.yml
+      line: 'network.bind_host: ["127.0.0.1", "{{ your_private_ip }}"]'
+
+  - name: Configurando discovery.type en Elastic Search...
+    become: yes
+    lineinfile:
+      path: /etc/elasticsearch/elasticsearch.yml
+      line: 'discovery.type: single-node'
+
+  - name: Añadiendo xpack.security a Elastic Search...
+    become: yes
+    lineinfile:
+      path: /etc/elasticsearch/elasticsearch.yml
+      line: 'xpack.security.enabled: true'
+
+  - name: Creando tabla y cadenas en nftables...
+    shell: |
+      sudo nft add table inet filter
+      sudo nft add chain inet filter input
+      sudo nft add chain inet filter output
+
+  - name: Agregando reglas a la cadena de entrada...
+    shell: |
+      sudo nft add rule inet filter input iifname {{ interface }} ct state related,established accept
+
+  - name: Agregando reglas a la cadena de salida...
+    shell: |
+      sudo nft add rule inet filter output oifname {{ interface }} ct state related,established accept
+
+
+  - name: Iniciando Elasticsearch...
+    become: true
+    systemd:
+      name: elasticsearch.service
+      state: started
+
+  - name: Habilitando Elasticsearch...
+    become: true
+    systemd:
+      name: elasticsearch.service
+      enabled: yes
+
+  - name: Creando archivo passwords.txt...
+    become: true
+    file:
+      path: /home/passwords.txt
+      state: touch
+
+  - name: Asignando permisos a passwords.txt...
+    become: true
+    file:
+      path: /home/passwords.txt
+      mode: '0777'
+
+  - name: Agregando contraseñas a password.txt...
+    shell: "/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b > /home/passwords.txt"
+    ignore_errors: true
+
+  - name: Leyendo passwords.txt...
+    slurp:
+      path: /home/passwords.txt
+    register: contenido_archivo
+
+  - name: Decodificando passwords.txt...
+    set_fact:
+      archivo_decodificado: "{{ contenido_archivo.content | b64decode }}"
+
+  - name: Guardando contraseña elastic...
+    set_fact:
+      elastic_pass: "{{ archivo_decodificado | regex_search('elastic\\s*=\\s*(\\S+)') | replace('elastic = ', '') }}"
+
+  - name: Guardando contraseña kibana...
+    set_fact:
+      kibana_pass: "{{ archivo_decodificado | regex_search('kibana\\s*=\\s*(\\S+)') | replace('kibana = ', '') }}"
+
+  - name: Generando claves encriptadas de Kibana...
+    become: yes
+    shell: /usr/share/kibana/bin/kibana-encryption-keys generate -q
+    register: encryption_keys_output
+    ignore_errors: true
+
+  - name: Agregando claves de Kibana...
+    lineinfile:
+      path: /etc/kibana/kibana.yml
+      line: "{{ encryption_keys_output.stdout }}"
+      state: present
+
+  - name: Configurando Kibana con nuestra ip privada...
+    replace:
+      path: /etc/kibana/kibana.yml
+      regexp: '#server\.host: "localhost"'
+      replace: 'server.host: "{{ your_private_ip }}"'
+
+  - name: Cambiando usuario de Kibana a kibana_system...
+    replace:
+      path: /etc/kibana/kibana.yml
+      regexp: '#elasticsearch\.username:.*'
+      replace: 'elasticsearch.username: "kibana_system"'
+
+  - name: Cambiando contraseña de kibana (ver en passwords.txt)...
+    replace:
+      path: /etc/kibana/kibana.yml
+      regexp: '#elasticsearch\.password:.*'
+      replace: 'elasticsearch.password: "{{ kibana_pass }}"'
+
+  - name: Iniciando Kibana...
+    systemd:
+      name: kibana.service
+      state: started

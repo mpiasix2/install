@@ -1,0 +1,5 @@
+---
+- import_playbook: ./playbooks/nftables.yaml
+- import_playbook: ./playbooks/suricata.yaml
+- import_playbook: ./playbooks/siem.yaml
+- import_playbook: ./playbooks/filebeat.yaml

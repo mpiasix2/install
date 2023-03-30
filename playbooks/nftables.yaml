@@ -1,0 +1,52 @@
+---
+- name: Instalar y configurar Nftables
+  hosts: [fw, sec]
+  become: yes
+  serial: 1
+  vars:
+    package: nftables
+  tasks:
+
+  - name: Actualizando paquetes...
+    apt:
+      update_cache: yes
+
+  - name: Gather Package Facts
+    package_facts:
+      manager: auto
+
+  - name: Verificar si nftables está instalado
+    command: nft --version
+    register: nft_check
+    ignore_errors: true
+
+  - name: Preguntar al usuario si desea sobrescribir la instalación
+    pause:
+      prompt: "nftables ya está instalado. ¿Desea sobrescribir la instalación? (s/n)"
+      echo: yes
+    register: prompt_result
+    when: nft_check.rc == 0
+
+  - name: Definir variable con respuesta del usuario
+    set_fact:
+      overwrite_nftables: "{{ prompt_result.user_input | lower }}"
+    when: nft_check.rc == 0
+
+  - name: Eliminar y purgar nftables si el usuario desea sobrescribir la instalación
+    apt:
+      name: "{{ package }}"
+      state: absent
+      purge: yes
+    when: nft_check.rc == 0 and overwrite_nftables == 's'
+
+  - name: Instalar nftables si no está presente o si el usuario desea sobrescribir la instalación
+    apt:
+      name: "{{ package }}"
+      state: present
+    when: nft_check.rc != 0 or overwrite_nftables == 's'
+
+  - name: Actualizar paquetes si el usuario no desea sobrescribir la instalación
+    apt:
+      update_cache: yes
+    when: nft_check.rc == 0 and overwrite_nftables == 'n'
+

@@ -1,0 +1,93 @@
+---
+- name: Instalar y configurar Suricata
+  hosts: [fw]
+  become: yes
+  vars:
+    package: suricata
+  tasks:
+
+  - name: Añadiendo el repositorio de Suricata...
+    apt_repository:
+      repo: ppa:oisf/suricata-stable
+      state: present
+
+  - name: Actualizando paquetes...
+    apt:
+      update_cache: yes
+
+  - name: Gather Package Facts
+    package_facts:
+      manager: auto
+
+  - name: Verificar si Suricata está instalado
+    shell: suricata --build-info
+    register: suricata_check
+    ignore_errors: true
+
+  - name: Preguntar al usuario si desea sobrescribir la instalación
+    pause:
+      prompt: "Suricata ya está instalado. ¿Desea sobrescribir la instalación? (s/n)"
+      echo: yes
+    register: prompt_result
+    when: suricata_check.rc == 0
+
+  - name: Definir variable con respuesta del usuario
+    set_fact:
+      overwrite_suricata: "{{ prompt_result.user_input | lower }}"
+    when: suricata_check.rc == 0
+
+  - name: Eliminar y purgar Suricata si el usuario desea sobrescribir la instalación
+    apt:
+      name: "{{ package }}"
+      state: absent
+      purge: yes
+    when: suricata_check.rc == 0 and overwrite_suricata == 's'
+
+  - name: Instalar Suricata si no está presente o si el usuario desea sobrescribir la instalación
+    apt:
+      name: "{{ package }}"
+      state: present
+    when: suricata_check.rc != 0 or overwrite_suricata == 's'
+
+  - name: Actualizar paquetes si el usuario no desea sobrescribir la instalación
+    apt:
+      update_cache: yes
+    when: suricata_check.rc == 0 and overwrite_suricata == 'n'
+
+  - name: Habilitando el servicio de Suricata...
+    systemd:
+      name: suricata.service
+      enabled: yes
+
+  - name: Deteniendo el servicio de Suricata...
+    systemd:
+      name: suricata.service
+      state: stopped
+
+  - name: Habilitando community-id en /etc/suricata/suricata.yaml...
+    replace:
+      path: /etc/suricata/suricata.yaml
+      regexp: 'community-id: false'
+      replace: 'community-id: true'
+
+  - name: Obteneniendo información de la interfaz de red...
+    command: ip -p -j route show default
+    register: route_info
+
+  - name: Obteneniendo el nombre de la interfaz de red...
+    set_fact:
+      interface: "{{ route_info.stdout | regex_findall('\"dev\": \"([^\"]+)\"') | first }}"
+
+  - name: Agregando la interfaz de red en /etc/suricata/suricata.yaml...
+    replace:
+      path: /etc/suricata/suricata.yaml
+      regexp: 'interface: .*'
+      replace: "interface: '{{ interface }}'"
+
+  - name: Actualizando las reglas de Suricata...
+    command: suricata-update
+
+  - name: Iniciando Suricata...
+    systemd:
+      name: suricata.service
+      state: started
