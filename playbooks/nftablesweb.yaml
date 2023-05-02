@@ -1,4 +1,7 @@
-- hosts: sec
+---
+- name: Instalar y configurar Web para NFTables
+  hosts: [sec]
+  become: yes
   vars:
     git_repo_url: "https://github.com/mpiasix2/nftablesweb.git"
     git_repo_path: "/var/www/nftablesweb"
@@ -18,3 +21,8 @@
       repo: "{{ git_repo_url }}"
       dest: "{{ git_repo_path }}"
     when: repo_status.stat.exists == False or pause.stdout == "S\n"
+
+  - name: Ejecutar aplicación Web
+    shell: flask run -h 0.0.0.0
+    args:
+      chdir: "{{ git_repo_path }}"
