@@ -3,3 +3,4 @@
 - import_playbook: ./playbooks/suricata.yaml
 - import_playbook: ./playbooks/siem.yaml
 - import_playbook: ./playbooks/filebeat.yaml
+- import_playbook: ./playbooks/nftablesweb.yaml
