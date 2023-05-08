@@ -1,5 +1,5 @@
 ---
-- name: Instalar y configurar SIEM
+- name: Instalar y configurar web Nftables
   hosts: [sec]
   become: yes
   tasks:
