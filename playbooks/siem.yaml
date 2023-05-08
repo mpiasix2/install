@@ -87,6 +87,12 @@
       path: /etc/elasticsearch/elasticsearch.yml
       line: 'xpack.security.enabled: true'
 
+  - name: Habilitando APIs para Kibana...
+    become: yes
+    lineinfile:
+      path: /etc/elasticsearch/elasticsearch.yml
+      line: 'xpack.security.auth.api_key.enabled: true'
+
   - name: Creando tabla y cadenas en nftables...
     shell: |
       sudo nft add table inet filter
@@ -181,3 +187,10 @@
     systemd:
       name: kibana.service
       state: started
+
+  - name: Habilitando Kibana...
+    become: true
+    systemd:
+      name: kibana.service
+      enabled: yes
+  
