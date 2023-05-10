@@ -9,6 +9,11 @@
     apt:
       name: docker.io
       state: present
+      
+  - name: Instalando docker-py...
+      become: true
+      pip:
+        name: docker-py
 
   - name: Desplegando web...
     become: true
