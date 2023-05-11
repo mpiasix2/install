@@ -13,21 +13,15 @@
 
     - name: Obteneniendo la información de la ip privada...
       delegate_to: sec
-      command: hostname -I
+      command: "sh -c \"ip addr show enp0s3 | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/'\""
       register: ip_private_info
 
     - name: Obteniendo dirección IP privada...
       delegate_to: sec
       set_fact:
-        your_private_ipp: "{{ ip_private_info.stdout_lines[0] }}"
+        your_private_ip: "{{ ip_private_info.stdout_lines[0] }}"
 
-#Quitar último caracter de variable y asignar a una nueva variable
-    - name: Modificando variable ip...
-      delegate_to: sec
-      set_fact:
-        your_private_ip: "{{ your_private_ipp[0:(your_private_ipp | length - 1)] }}"
-
-    - name: Copiando archivo passwords.txt...
+    - name: Copiando archivo /home/passwords.txt...
       delegate_to: sec
       slurp:
         src: /home/passwords.txt
@@ -37,7 +31,7 @@
       set_fact:
         archivo_decodificado: "{{ contenido_archivo.content | b64decode }}"
 
-    - name: Obteniendo el nombre de la interfaz de red...
+    - name: Obteniendo contraseña de elasticsearch...
       set_fact:
         elastic_pass: "{{ archivo_decodificado | regex_search('elastic\\s*=\\s*(\\S+)') | replace('elastic = ', '') }}"
 
