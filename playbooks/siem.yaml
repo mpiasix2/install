@@ -187,3 +187,4 @@
     systemd:
       name: kibana.service
       enabled: yes
+      
