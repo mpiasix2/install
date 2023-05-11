@@ -1,0 +1,117 @@
+---
+- name: Instalar y configurar Filebeat
+  hosts: [fw]
+  become: yes
+  tasks:
+    - name: Obteniendo información de la interfaz de red...
+      command: ip -p -j route show default
+      register: route_info
+
+    - name: Obteniendo el nombre de la interfaz de red...
+      set_fact:
+        interface: "{{ route_info.stdout | regex_findall('\"dev\": \"([^\"]+)\"') | first }}"
+
+    - name: Obteneniendo la información de la ip privada...
+      delegate_to: sec
+      command: hostname -I
+      register: ip_private_info
+
+    - name: Obteniendo dirección IP privada...
+      delegate_to: sec
+      set_fact:
+        your_private_ipp: "{{ ip_private_info.stdout_lines[0] }}"
+
+#Quitar último caracter de variable y asignar a una nueva variable
+    - name: Modificando variable ip...
+      delegate_to: sec
+      set_fact:
+        your_private_ip: "{{ your_private_ipp[0:(your_private_ipp | length - 1)] }}"
+
+    - name: Copiando archivo passwords.txt...
+      delegate_to: sec
+      slurp:
+        src: /home/passwords.txt
+      register: contenido_archivo
+
+    - name: Decodificando variable...
+      set_fact:
+        archivo_decodificado: "{{ contenido_archivo.content | b64decode }}"
+
+    - name: Obteniendo el nombre de la interfaz de red...
+      set_fact:
+        elastic_pass: "{{ archivo_decodificado | regex_search('elastic\\s*=\\s*(\\S+)') | replace('elastic = ', '') }}"
+
+    - name: Creando tabla y cadenas en nftables...
+      shell: |
+        sudo nft add table inet filter
+        sudo nft add chain inet filter input
+        sudo nft add chain inet filter output
+
+    - name: Agregando reglas a la cadena de entrada...
+      shell: |
+        sudo nft add rule inet filter input iifname {{ interface }} ct state related,established accept
+
+    - name: Agregando reglas a la cadena de salida...
+      shell: |
+        sudo nft add rule inet filter output oifname {{ interface }} ct state related,established accept
+
+    - name: Añadiendo Elasticsearch GPG key...
+      apt_key:
+        url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        state: present
+
+    - name: Añadiendo repositorio Elastic...
+      apt_repository:
+        repo: "deb https://artifacts.elastic.co/packages/7.x/apt stable main"
+        state: present
+
+    - name: Actualizando paquetes...
+      apt:
+        update_cache: yes
+
+    - name: Instalando Filebeat...
+      apt:
+        name: filebeat
+        state: present
+
+    - name: Configurando host con nuestra ip en filebeat...
+      replace:
+        path: /etc/filebeat/filebeat.yml
+        regexp: '#host: "localhost:5601"'
+        replace: 'host: "{{ your_private_ip }}:5601"'
+
+    - name: Configurando hosts con nuestra ip en filebeat...
+      replace:
+        path: /etc/filebeat/filebeat.yml
+        regexp: 'hosts: \["localhost:9200"\]'
+        replace: 'hosts: ["{{ your_private_ip }}:9200"]'
+
+    - name: Agregando usuario elastic...
+      replace:
+        path: /etc/filebeat/filebeat.yml
+        regexp: '#username: "elastic"'
+        replace: 'username: "elastic"'
+
+    - name: Agregando contraseña (ver en passwords.txt)...
+      replace:
+        path: /etc/filebeat/filebeat.yml
+        regexp: '#password: "changeme"'
+        replace: 'password: "{{ elastic_pass }}"'
+        #vars:
+          #pass_elastic: "{{ vault_pass_elastic }}"
+
+    - name: Habilitando el modulo Suricata en Filebeat...
+      command: filebeat modules enable suricata
+
+    - name: Filebeat Setup
+      command: filebeat setup
+
+    - name: Iniciando Filebeat...
+      systemd:
+        name: filebeat.service
+        enabled: yes
+        state: started
+
+    - name: Password elastic
+      debug:
+        var: elastic_pass
