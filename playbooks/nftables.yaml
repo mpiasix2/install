@@ -38,6 +38,7 @@
       state: absent
       purge: yes
     when: nft_check.rc == 0 and overwrite_nftables == 's'
+    
 
   - name: Instalar nftables si no está presente o si el usuario desea sobrescribir la instalación
     apt:
