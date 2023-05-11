@@ -2,6 +2,12 @@
 - name: Instalar y configurar web Nftables
   hosts: [sec]
   become: yes
+
+  vars:
+      container_name: "mpi_docker"
+      image_name: "mpisec/nft"
+      port_mapping: "5000:80"
+
   tasks:
 
   - name: Instalando docker.io...
@@ -26,28 +32,65 @@
 #    become: true
 #    shell: sudo docker run --rm -p 5000:80 mpisec/nft
 
-
-  - name: Comprobar si existe el contenedor mpi_docker
-    docker_container_info:
-      name: mpi_docker
-    register: container_info
+  - name: Verificar si el contenedor mpi_docker está en ejecución
+    shell: sudo docker ps -q -f name={{ container_name }}
+    register: docker_ps
     ignore_errors: yes
 
   - name: Detener el contenedor mpi_docker si está en ejecución
-    docker_container:
-      name: mpi_docker
-      state: stopped
-    when: container_info is defined and container_info is success
+    when: docker_ps.stdout != ""
+    shell: sudo docker stop {{ container_name }}
+    register: docker_stop
+    changed_when: docker_stop.stdout != ""
 
-  - name: Desplegar la web en sec...
-    become: true
-    shell: sudo docker run --rm -p 5000:80 --name mpi_docker mpisec/nft
-    register: result
+  - name: Verificar si el contenedor mpi_docker está en ejecución
+    shell: sudo docker ps -q -f name={{ container_name }}
+    register: docker_ps
+    ignore_errors: yes
 
-  - name: Imprimir mensaje de confirmación
-    debug:
-      msg: "El despliegue de la web se ha completado con éxito"
-    when: result.changed
+  - name: Ejecutar el contenedor mpi_docker si no está en ejecución
+    when: docker_ps.stdout == ""
+    shell: sudo docker run --rm -p {{ port_mapping }} --name {{ container_name }} {{ image_name }}
+
+
+
+
+  #- name: Verificar si el contenedor mpi_docker está en ejecución
+    #shell: docker ps -q -f name={{ container_name }}
+    #register: docker_ps
+   # ignore_errors: yes
+
+  #- name: Detener el contenedor mpi_docker si está en ejecución
+ #   when: docker_ps.stdout != ""
+#    shell: docker stop {{ container_name }}
+
+#  - name: Ejecutar el contenedor mpi_docker si no está en ejecución
+#    when: docker_ps.stdout == ""
+#    shell: docker run --rm -p {{ port_mapping }} --name {{ container_name }} {{ image_name }}
+
+
+
+
+ # - name: Comprobar si existe el contenedor mpi_docker
+ #   docker_container_info:
+ #     name: mpi_docker
+ #   register: container_info
+ #   ignore_errors: yes
+
+ #- name: Detener el contenedor mpi_docker si está en ejecución
+ #   become: true
+ #   shell: sudo docker stop mpi_docker
+ #   when: container_info is defined and container_info is success
+
+ # - name: Desplegar la web en sec...
+ #   become: true
+ #   shell: sudo docker run --rm -p 5000:80 --name mpi_docker mpisec/nft
+ #   register: result
+
+ # - name: Imprimir mensaje de confirmación
+ #   debug:
+ #     msg: "El despliegue de la web se ha completado con éxito"
+ #   when: result.changed
 
 
 
