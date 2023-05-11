@@ -20,7 +20,7 @@
       manager: auto
 
   - name: Verificar si Suricata está instalado
-    shell: suricata --build-info
+    shell: suricata --build-info 2> /tmp/suricataerror.txt
     register: suricata_check
     ignore_errors: true
 
