@@ -50,9 +50,13 @@
 
   - name: Ejecutar el contenedor mpi_docker si no está en ejecución
     when: docker_ps.stdout == ""
-    shell: sudo docker run --rm -p {{ port_mapping }} --name {{ container_name }} {{ image_name }}
+    shell: sudo docker run --rm -p {{ port_mapping }} --name {{ container_name }} {{ image_name }} &
 
-
+  - name: Configurando contenedor...
+    shell: sudo docker exec {{ container_name }} apt-get update -y
+    shell: sudo docker exec {{ container_name }} apt-get install iputils-ping -y
+    shell: sudo docker exec {{ container_name }} apt-get install ssh -y
+    shell: sudo docker exec {{ container_name }} apt-get install sshpass -y
 
 
   #- name: Verificar si el contenedor mpi_docker está en ejecución
