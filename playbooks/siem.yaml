@@ -49,16 +49,16 @@
       interface: "{{ route_info.stdout | regex_findall('\"dev\": \"([^\"]+)\"') | first }}"
 
   - name: Obteneniendo la información de la ip privada...
-    command: hostname -I
+    command: "sh -c \"ip addr show enp0s3 | grep 'inet ' | awk '{print $2}' | cut -f1 -d'/'\""
     register: ip_private_info
 
   - name: Guardando IP privada...
     set_fact:
-      your_private_ipp: "{{ ip_private_info.stdout_lines[0] }}"
+      your_private_ip: "{{ ip_private_info.stdout_lines[0] }}"
 
-  - name: Quitando el espacio final de la ip privada...
-    set_fact:
-      your_private_ip: "{{ your_private_ipp[0:(your_private_ipp | length - 1)] }}"
+  #- name: Quitando el espacio final de la ip privada...
+  #  set_fact:
+  #    your_private_ip: "{{ your_private_ipp[0:(your_private_ipp | length - 1)] }}"
 
   - name: Obteneniendo dirección IP pública...
     shell: curl ifconfig.me
@@ -187,4 +187,3 @@
     systemd:
       name: kibana.service
       enabled: yes
-  
