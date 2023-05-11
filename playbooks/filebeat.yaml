@@ -21,6 +21,12 @@
       set_fact:
         your_private_ip: "{{ ip_private_info.stdout_lines[0] }}"
 
+#Quitar último caracter de variable y asignar a una nueva variable
+    #- name: Modificando variable ip...
+    #  delegate_to: sec
+    #  set_fact:
+    #    your_private_ip: "{{ your_private_ipp[0:(your_private_ipp | length - 1)] }}"
+
     - name: Copiando archivo /home/passwords.txt...
       delegate_to: sec
       slurp:
