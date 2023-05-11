@@ -4,17 +4,59 @@
   become: yes
   tasks:
 
-  - name: Instalando docker...
+  - name: Instalando docker.io...
     become: true
     apt:
       name: docker.io
       state: present
-      
-  - name: Instalando docker-py...
-      become: true
-      pip:
-        name: docker-py
 
-  - name: Desplegando web...
+  - name: Instalando pip3...
     become: true
-    shell: sudo docker run --rm -p 5000:80 mpisec/nft
+    apt:
+      name: python3-pip
+      state: present
+
+  - name: Instalando docker-py...
+    become: true
+    pip:
+      name: docker-py
+
+
+#  - name: Desplegando web en sec...
+#    become: true
+#    shell: sudo docker run --rm -p 5000:80 mpisec/nft
+
+
+  - name: Comprobar si existe el contenedor mpi_docker
+    docker_container_info:
+      name: mpi_docker
+    register: container_info
+    ignore_errors: yes
+
+  - name: Detener el contenedor mpi_docker si está en ejecución
+    docker_container:
+      name: mpi_docker
+      state: stopped
+    when: container_info is defined and container_info is success
+
+  - name: Desplegar la web en sec...
+    become: true
+    shell: sudo docker run --rm -p 5000:80 --name mpi_docker mpisec/nft
+    register: result
+
+  - name: Imprimir mensaje de confirmación
+    debug:
+      msg: "El despliegue de la web se ha completado con éxito"
+    when: result.changed
+
+
+
+#  - name: Desplegando web en sec...
+#    become: true
+#    shell: sudo docker run --rm -p 5000:80 --name mpi_docker mpisec/nft
+#    register: result
+
+#  - name: Imprimiendo mensaje de confirmación
+#    debug:
+#      msg: "El despliegue de la web se ha completado con éxito"
+#    when: result.rc == 0
