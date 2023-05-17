@@ -114,21 +114,29 @@
       name: elasticsearch.service
       enabled: yes
 
-  - name: Creando archivo passwords.txt...
+  - name: Verificar si existe el archivo password.txt
+    stat:
+      path: /home/passwords.txt
+    register: password_file
+
+  - name: Creando archivo passwords.txt si no existe...
     become: true
     file:
       path: /home/passwords.txt
       state: touch
+    when: not password_file.stat.exists
 
   - name: Asignando permisos a passwords.txt...
     become: true
     file:
       path: /home/passwords.txt
       mode: '0777'
+    when: not password_file.stat.exists
 
   - name: Agregando contraseñas a password.txt...
     shell: "/usr/share/elasticsearch/bin/elasticsearch-setup-passwords auto -b > /home/passwords.txt"
     ignore_errors: true
+    when: not password_file.stat.exists
 
   - name: Leyendo passwords.txt...
     slurp:
@@ -152,6 +160,7 @@
     shell: /usr/share/kibana/bin/kibana-encryption-keys generate -q
     register: encryption_keys_output
     ignore_errors: true
+    no_log: true
 
   - name: Agregando claves de Kibana...
     lineinfile:
