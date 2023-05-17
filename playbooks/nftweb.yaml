@@ -33,30 +33,82 @@
 #    shell: sudo docker run --rm -p 5000:80 mpisec/nft
 
   - name: Verificar si el contenedor mpi_docker está en ejecución
-    shell: sudo docker ps -q -f name={{ container_name }}
+    command: sudo docker ps -q -f name={{ container_name }}
     register: docker_ps
     ignore_errors: yes
 
   - name: Detener el contenedor mpi_docker si está en ejecución
     when: docker_ps.stdout != ""
-    shell: sudo docker stop {{ container_name }}
+    command: sudo docker stop {{ container_name }}
     register: docker_stop
     changed_when: docker_stop.stdout != ""
 
   - name: Verificar si el contenedor mpi_docker está en ejecución
-    shell: sudo docker ps -q -f name={{ container_name }}
+    command: sudo docker ps -q -f name={{ container_name }}
     register: docker_ps
     ignore_errors: yes
 
   - name: Ejecutar el contenedor mpi_docker si no está en ejecución
     when: docker_ps.stdout == ""
-    shell: sudo docker run --rm -p {{ port_mapping }} --name {{ container_name }} {{ image_name }} &
+    command: sudo docker run -d --rm -p {{ port_mapping }} --name {{ container_name }} {{ image_name }}
+    changed_when: docker_ps.stdout == ""
 
-  - name: Configurando contenedor...
-    shell: sudo docker exec {{ container_name }} apt-get update -y
-    shell: sudo docker exec {{ container_name }} apt-get install iputils-ping -y
-    shell: sudo docker exec {{ container_name }} apt-get install ssh -y
-    shell: sudo docker exec {{ container_name }} apt-get install sshpass -y
+  - name: Actualizar sistema operativo
+    shell: |
+      sudo docker exec -it {{ container_name }} bash -c '
+      apt-get update -y &&
+      apt-get install ssh -y &&
+      apt-get install iputils-ping -y &&
+      apt-get install nano -y &&
+      apt-get install sshpass -y &&
+      ansible-galaxy collection install ansible.posix'
+
+#  - name: Verificar si existen las claves SSH
+#    command: sudo docker exec -it {{ container_name }} bash -c 'stat "/root/.ssh/id_rsa" && echo "Key exists" || echo "Key does not exist"'
+#    register: ssh_key_check
+#    changed_when: false
+#    become: no
+
+#  - name: Verificar si las claves SSH existen
+#    shell: docker exec -i {{ container_name }} test -f /root/.ssh/id_rsa
+#    register: ssh_key_check
+#    changed_when: false
+
+  - name: Crear directorio para la clave SSH
+    command: sudo docker exec -i {{ container_name }} mkdir -p /root/.ssh && chmod 0700 /root/.ssh
+    ignore_errors: yes
+
+  - name: Generar clave SSH (container)
+    shell: sudo docker exec -i {{ container_name }} bash -c 'test -f /root/.ssh/id_rsa || (ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa)'
+    ignore_errors: yes
+
+  - name: Configurar clave SSH (container)
+    shell: |
+      sudo docker exec -i {{ container_name }} chmod 0600 /root/.ssh/id_rsa
+      sudo docker exec -i {{ container_name }} chown root:root /root/.ssh/id_rsa
+
+
+
+
+
+
+
+
+
+#  - name: Generar clave SSH (2/2)
+#    ansible.posix.openssh_keypair:
+#      path: "/home/$(whoami)/.ssh/id_rsa"
+#      force: yes
+#      owner: $(whoami)
+#      group: $(whoami)
+#      mode: '0600'
+
+
+#  - name: Configurar el contenedor
+#    shell: sudo docker exec -it mpi_docker bash
+#    shell: apt-get update -y
+#    shell: apt-get install ssh -y
+#    shell: apt-get install iputils-ping -y
 
 
   #- name: Verificar si el contenedor mpi_docker está en ejecución
