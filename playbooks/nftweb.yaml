@@ -32,26 +32,26 @@
 #    become: true
 #    shell: sudo docker run --rm -p 5000:80 mpisec/nft
 
-  - name: Verificar si el contenedor mpi_docker está en ejecución
-    command: sudo docker ps -q -f name={{ container_name }}
-    register: docker_ps
-    ignore_errors: yes
+#  - name: Verificar si el contenedor mpi_docker está en ejecución
+#    command: sudo docker ps -q -f name={{ container_name }}
+#    register: docker_ps
+#    ignore_errors: yes
 
-  - name: Detener el contenedor mpi_docker si está en ejecución
-    when: docker_ps.stdout != ""
-    command: sudo docker stop {{ container_name }}
-    register: docker_stop
-    changed_when: docker_stop.stdout != ""
+#  - name: Detener el contenedor mpi_docker si está en ejecución
+#    when: docker_ps.stdout != ""
+#    command: sudo docker stop {{ container_name }}
+#    register: docker_stop
+#    changed_when: docker_stop.stdout != ""
 
-  - name: Verificar si el contenedor mpi_docker está en ejecución
-    command: sudo docker ps -q -f name={{ container_name }}
-    register: docker_ps
-    ignore_errors: yes
+#  - name: Verificar si el contenedor mpi_docker está en ejecución
+#    command: sudo docker ps -q -f name={{ container_name }}
+#    register: docker_ps
+#    ignore_errors: yes
 
   - name: Ejecutar el contenedor mpi_docker si no está en ejecución
-    when: docker_ps.stdout == ""
+ #   when: docker_ps.stdout == ""
     command: sudo docker run -d --rm -p {{ port_mapping }} --name {{ container_name }} {{ image_name }}
-    changed_when: docker_ps.stdout == ""
+  #  changed_when: docker_ps.stdout == ""
 
 #  - name: Actualizar sistema operativo
 #    shell: |
@@ -74,18 +74,18 @@
 #    register: ssh_key_check
 #    changed_when: false
 
-  - name: Crear directorio para la clave SSH
-    command: sudo docker exec -i {{ container_name }} mkdir -p /root/.ssh && chmod 0700 /root/.ssh
-    ignore_errors: yes
+#  - name: Crear directorio para la clave SSH
+#    command: sudo docker exec -i {{ container_name }} mkdir -p /root/.ssh && chmod 0700 /root/.ssh
+#    ignore_errors: yes
 
-  - name: Generar clave SSH (container)
-    shell: sudo docker exec -i {{ container_name }} bash -c 'test -f /root/.ssh/id_rsa || (ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa)'
-    ignore_errors: yes
+ # - name: Generar clave SSH (container)
+ #   shell: sudo docker exec -i {{ container_name }} bash -c 'test -f /root/.ssh/id_rsa || (ssh-keygen -t rsa -N "" -f /root/.ssh/id_rsa)'
+ #   ignore_errors: yes
 
-  - name: Configurar clave SSH (container)
-    shell: |
-      sudo docker exec -i {{ container_name }} chmod 0600 /root/.ssh/id_rsa
-      sudo docker exec -i {{ container_name }} chown root:root /root/.ssh/id_rsa
+ # - name: Configurar clave SSH (container)
+ #   shell: |
+ #     sudo docker exec -i {{ container_name }} chmod 0600 /root/.ssh/id_rsa
+ #     sudo docker exec -i {{ container_name }} chown root:root /root/.ssh/id_rsa
 
 
 
