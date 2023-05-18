@@ -54,14 +54,13 @@
   #  changed_when: docker_ps.stdout == ""
 
   - name: Actualizar sistema operativo
-    shell: |
-     sudo docker exec -it {{ container_name }} bash -c '
-     apt-get update -y &&
+    shell: sudo docker exec -it {{ container_name }} bash -c 'ansible-galaxy collection install ansible.posix'
+#     apt-get update -y &&
 #      apt-get install ssh -y &&
 #      apt-get install iputils-ping -y &&
 #      apt-get install nano -y &&
 #      apt-get install sshpass -y &&
-     ansible-galaxy collection install ansible.posix'
+     
 
 #  - name: Verificar si existen las claves SSH
 #    command: sudo docker exec -it {{ container_name }} bash -c 'stat "/root/.ssh/id_rsa" && echo "Key exists" || echo "Key does not exist"'
