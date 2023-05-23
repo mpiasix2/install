@@ -23,6 +23,7 @@
     shell: suricata --build-info 2> /tmp/suricataerror.txt
     register: suricata_check
     ignore_errors: true
+    no_log: true
 
   - name: Preguntar al usuario si desea sobrescribir la instalación
     pause:
